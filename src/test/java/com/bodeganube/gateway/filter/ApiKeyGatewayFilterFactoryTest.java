@@ -20,7 +20,7 @@ class ApiKeyGatewayFilterFactoryTest {
 
     @Test
     void sinApiKeyResponde401YNoReenviaLaPeticion() {
-        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/webhooks/ordenes"));
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/webhooks/ordenes"));
         AtomicBoolean reenviada = new AtomicBoolean(false);
 
         filtro.filter(exchange, cadena(reenviada)).block();
@@ -31,7 +31,7 @@ class ApiKeyGatewayFilterFactoryTest {
 
     @Test
     void conApiKeyIncorrectaResponde401() {
-        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/webhooks/ordenes")
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/webhooks/ordenes")
                 .header(ApiKeyGatewayFilterFactory.CABECERA, "clave-adivinada"));
         AtomicBoolean reenviada = new AtomicBoolean(false);
 
@@ -43,7 +43,7 @@ class ApiKeyGatewayFilterFactoryTest {
 
     @Test
     void conApiKeyCorrectaReenviaLaPeticion() {
-        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/webhooks/ordenes")
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/webhooks/ordenes")
                 .header(ApiKeyGatewayFilterFactory.CABECERA, "clave-de-prueba"));
         AtomicBoolean reenviada = new AtomicBoolean(false);
 

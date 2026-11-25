@@ -18,7 +18,7 @@ class RutasGatewayTest {
 
     @Test
     void webhookSinApiKeyEsRechazadoCon401() {
-        webTestClient.post().uri("/webhooks/ordenes")
+        webTestClient.post().uri("/api/v1/webhooks/ordenes")
                 .exchange()
                 .expectStatus().isUnauthorized()
                 .expectBody().jsonPath("$.mensaje").isEqualTo("API key ausente o invalida");
@@ -26,7 +26,14 @@ class RutasGatewayTest {
 
     @Test
     void webhookSoloAceptaPost() {
-        webTestClient.get().uri("/webhooks/ordenes")
+        webTestClient.get().uri("/api/v1/webhooks/ordenes")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void lasRutasSinVersionYaNoExisten() {
+        webTestClient.post().uri("/webhooks/ordenes")
                 .exchange()
                 .expectStatus().isNotFound();
     }
