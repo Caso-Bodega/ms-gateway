@@ -22,6 +22,8 @@
         <java.version>17</java.version>
         <!-- Version de Spring Cloud compatible con Spring Boot 3.2 -->
         <spring-cloud.version>2023.0.1</spring-cloud.version>
+        <!-- Misma version de JJWT que usa ms-autenticacion para firmar los tokens -->
+        <jjwt.version>0.12.5</jjwt.version>
     </properties>
 
     <dependencies>
@@ -29,6 +31,25 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+
+        <!-- JJWT: valida la firma y la expiracion del JWT emitido por ms-autenticacion -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- Pruebas: JUnit 5, AssertJ y WebTestClient -->

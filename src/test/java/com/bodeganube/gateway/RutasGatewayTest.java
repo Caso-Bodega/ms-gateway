@@ -32,6 +32,14 @@ class RutasGatewayTest {
     }
 
     @Test
+    void lasRutasDeUsuarioExigenJwt() {
+        webTestClient.get().uri("/api/v1/productos")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody().jsonPath("$.mensaje").isEqualTo("Falta el token: envie Authorization: Bearer <jwt>");
+    }
+
+    @Test
     void lasRutasSinVersionYaNoExisten() {
         webTestClient.post().uri("/webhooks/ordenes")
                 .exchange()
