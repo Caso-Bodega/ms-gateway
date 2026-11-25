@@ -6,43 +6,71 @@ spring:
     name: ms-gateway
   cloud:
     gateway:
-      # La URI de cada microservicio se puede cambiar con una variable de entorno
-      # (en AWS sera la del balanceador interno de la VPC).
+      # La URI de cada microservicio se puede cambiar con una variable de entorno. En Docker Swarm es el
+      # nombre del servicio dentro de la red overlay (por ejemplo http://ms-ordenes:8082).
       routes:
-        # Ingesta de ventas desde la AWS Lambda (machine-to-machine). La Lambda no tiene un JWT de usuario,
-        # asi que se autentica con la API key de la cabecera X-Api-Key (filtro ApiKey) y la ruta se
-        # reescribe al endpoint real de ms-ordenes.
+        # Ingesta de ventas desde la AWS Lambda procesadora (machine-to-machine). La Lambda no tiene un JWT
+        # de usuario, asi que se autentica con la API key de la cabecera X-Api-Key (filtro ApiKey) y la ruta
+        # se reescribe al endpoint real de ms-ordenes.
         - id: webhook-ordenes
           uri: ${MS_ORDENES_URL:http://localhost:8082}
           predicates:
-            - Path=/webhooks/ordenes
+            - Path=/api/v1/webhooks/ordenes
             - Method=POST
           filters:
             - ApiKey
-            - SetPath=/api/ordenes
+            - SetPath=/api/v1/ordenes
         - id: ms-autenticacion
           uri: ${MS_AUTENTICACION_URL:http://localhost:8081}
           predicates:
-            - Path=/api/auth/**
+            - Path=/api/v1/auth/**,/api/v1/usuarios/**,/api/v1/usuarios
         - id: ms-ordenes
           uri: ${MS_ORDENES_URL:http://localhost:8082}
           predicates:
-            - Path=/api/ordenes/**
+            - Path=/api/v1/ordenes/**,/api/v1/ordenes
         - id: ms-inventario
           uri: ${MS_INVENTARIO_URL:http://localhost:8083}
           predicates:
-            - Path=/api/productos/**
+            - Path=/api/v1/productos/**,/api/v1/productos
         - id: ms-picking-despacho
           uri: ${MS_PICKING_URL:http://localhost:8084}
           predicates:
-            - Path=/api/picking/**
+            - Path=/api/v1/picking/**,/api/v1/picking
 
-# NOTA: las rutas /webhooks/** son machine-to-machine (API key). Las rutas /api/** son para usuarios: la
-# validacion de su JWT (RBAC) se implementa como un GlobalFilter que verifique la firma del token emitido
-# por ms-autenticacion antes de reenviar la peticion; queda como siguiente paso (ver README).
+        # Estado de salud de cada microservicio (solo GET y solo /actuator/health). El pipeline de CI/CD
+        # las consulta despues de desplegar para confirmar que el servicio quedo arriba en la nube.
+        - id: estado-ms-autenticacion
+          uri: ${MS_AUTENTICACION_URL:http://localhost:8081}
+          predicates:
+            - Path=/estado/ms-autenticacion
+            - Method=GET
+          filters:
+            - SetPath=/actuator/health
+        - id: estado-ms-ordenes
+          uri: ${MS_ORDENES_URL:http://localhost:8082}
+          predicates:
+            - Path=/estado/ms-ordenes
+            - Method=GET
+          filters:
+            - SetPath=/actuator/health
+        - id: estado-ms-inventario
+          uri: ${MS_INVENTARIO_URL:http://localhost:8083}
+          predicates:
+            - Path=/estado/ms-inventario
+            - Method=GET
+          filters:
+            - SetPath=/actuator/health
+        - id: estado-ms-picking-despacho
+          uri: ${MS_PICKING_URL:http://localhost:8084}
+          predicates:
+            - Path=/estado/ms-picking-despacho
+            - Method=GET
+          filters:
+            - SetPath=/actuator/health
 
 app:
   webhook:
-    # Clave compartida con la AWS Lambda que reenvia los avisos de venta (autenticacion M2M, filtro ApiKey).
-    # En AWS vendria de Secrets Manager; en local se define con la variable de entorno WEBHOOK_API_KEY.
+    # Clave compartida con la AWS Lambda procesadora (autenticacion M2M, filtro ApiKey).
+    # En Docker Swarm llega como secreto (archivo /run/secrets/WEBHOOK_API_KEY); en local, con la variable
+    # de entorno WEBHOOK_API_KEY.
     api-key: ${WEBHOOK_API_KEY:clave-local-solo-para-desarrollo}
