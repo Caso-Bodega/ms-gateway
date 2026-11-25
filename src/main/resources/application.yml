@@ -1,9 +1,18 @@
 server:
   port: ${PORT:8080}
+  # Al detener o actualizar un contenedor, termina las peticiones en curso antes de apagarse.
+  shutdown: graceful
 
 spring:
   application:
     name: ms-gateway
+  config:
+    # En Docker Swarm los secretos (DB_PASSWORD, JWT_SECRET, WEBHOOK_API_KEY) llegan como archivos en
+    # /run/secrets. configtree los carga como propiedades con el nombre del archivo; si la carpeta no
+    # existe (por ejemplo al correr en local) se ignora.
+    import: optional:configtree:/run/secrets/
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   cloud:
     gateway:
       # La URI de cada microservicio se puede cambiar con una variable de entorno. En Docker Swarm es el
@@ -78,3 +87,15 @@ app:
     # Misma clave con la que ms-autenticacion firma los JWT (HMAC, minimo 32 caracteres). En Docker Swarm
     # llega como secreto (/run/secrets/JWT_SECRET). El valor por defecto es solo para desarrollo local.
     secret: ${JWT_SECRET:cambiar-esta-clave-secreta-por-una-de-al-menos-32-caracteres}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Solo se expone la salud. /actuator/health/liveness la usa el HEALTHCHECK de la imagen y
+        # /actuator/health (incluye la base de datos) la consulta el pipeline despues de desplegar.
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
