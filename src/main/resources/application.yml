@@ -74,3 +74,7 @@ app:
     # En Docker Swarm llega como secreto (archivo /run/secrets/WEBHOOK_API_KEY); en local, con la variable
     # de entorno WEBHOOK_API_KEY.
     api-key: ${WEBHOOK_API_KEY:clave-local-solo-para-desarrollo}
+  jwt:
+    # Misma clave con la que ms-autenticacion firma los JWT (HMAC, minimo 32 caracteres). En Docker Swarm
+    # llega como secreto (/run/secrets/JWT_SECRET). El valor por defecto es solo para desarrollo local.
+    secret: ${JWT_SECRET:cambiar-esta-clave-secreta-por-una-de-al-menos-32-caracteres}
