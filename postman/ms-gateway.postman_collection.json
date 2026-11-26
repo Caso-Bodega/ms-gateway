@@ -1,11 +1,169 @@
 {
   "info": {
-    "_postman_id": "abfc4d59-57a9-bb89-bc53-32f94ad4cab6",
+    "_postman_id": "d346b58f-543e-5ccf-9b84-94ef6bcb8a26",
     "name": "BodegaNube - ms-gateway",
-    "description": "Entrada unica. Requiere los 4 microservicios corriendo. Muestra el enrutamiento y la autenticacion M2M del webhook con API key.",
+    "description": "Entrada unica al backend. Requiere todo el sistema corriendo (docker compose up en bodeganube-infra) o el cluster Swarm (cambiar baseUrl a http://<IP-manager>:8080). Muestra el login con JWT, el control de acceso por rol, el aislamiento por comercio, el webhook M2M con API key y la salud de cada microservicio.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "Login operario (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set(\"token\", pm.response.json().token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"operario\",\n  \"password\": \"{{operarioPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Login comercio tienda1 (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set(\"tokenComercio\", pm.response.json().token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"tienda1\",\n  \"password\": \"{{comercioPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "API sin token (401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 401\", () => pm.response.to.have.status(401));",
+              "pm.test(\"pm.response.json().mensaje.includes(\\\"Falta el token\\\")\", () => pm.expect(pm.response.json().mensaje.includes(\"Falta el token\")).to.be.true);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/productos"
+      }
+    },
+    {
+      "name": "API con token invalido (401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 401\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer token.inventado.123"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/productos"
+      }
+    },
+    {
+      "name": "Operario crea un producto (201)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"sku\", \"GW-\" + (Date.now() % 100000));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/productos",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"nombre\": \"Mochila\",\n  \"stockDisponible\": 30\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
     {
       "name": "Webhook sin API key (401)",
       "event": [
@@ -27,10 +185,10 @@
             "value": "application/json"
           }
         ],
-        "url": "{{baseUrl}}/webhooks/ordenes",
+        "url": "{{baseUrl}}/api/v1/webhooks/ordenes",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"externalOrderId\": \"shopify-gw\",\n  \"comercioId\": \"comercio-123\",\n  \"items\": [\n    {\n      \"productoId\": \"SKU-1\",\n      \"cantidad\": 1\n    }\n  ]\n}",
+          "raw": "{\n  \"externalOrderId\": \"shopify-gw\",\n  \"comercioId\": \"comercio-123\",\n  \"items\": [\n    {\n      \"productoId\": \"{{sku}}\",\n      \"cantidad\": 1\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -64,10 +222,10 @@
             "value": "clave-adivinada"
           }
         ],
-        "url": "{{baseUrl}}/webhooks/ordenes",
+        "url": "{{baseUrl}}/api/v1/webhooks/ordenes",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"externalOrderId\": \"shopify-gw\",\n  \"comercioId\": \"comercio-123\",\n  \"items\": [\n    {\n      \"productoId\": \"SKU-1\",\n      \"cantidad\": 1\n    }\n  ]\n}",
+          "raw": "{\n  \"externalOrderId\": \"shopify-gw\",\n  \"comercioId\": \"comercio-123\",\n  \"items\": [\n    {\n      \"productoId\": \"{{sku}}\",\n      \"cantidad\": 1\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -77,7 +235,7 @@
       }
     },
     {
-      "name": "Webhook con API key: crea la orden en ms-ordenes (201)",
+      "name": "Webhook con API key: crea la orden y reserva stock (201)",
       "event": [
         {
           "listen": "prerequest",
@@ -93,7 +251,9 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));"
+              "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set(\"ordenId\", pm.response.json().id);",
+              "pm.test(\"pm.response.json().estado === \\\"LISTA_PARA_PICKING\\\"\", () => pm.expect(pm.response.json().estado === \"LISTA_PARA_PICKING\").to.be.true);"
             ]
           }
         }
@@ -110,10 +270,10 @@
             "value": "{{apiKey}}"
           }
         ],
-        "url": "{{baseUrl}}/webhooks/ordenes",
+        "url": "{{baseUrl}}/api/v1/webhooks/ordenes",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"externalOrderId\": \"{{externalOrderId}}\",\n  \"comercioId\": \"comercio-123\",\n  \"items\": [\n    {\n      \"productoId\": \"SKU-1\",\n      \"cantidad\": 1\n    }\n  ]\n}",
+          "raw": "{\n  \"externalOrderId\": \"{{externalOrderId}}\",\n  \"comercioId\": \"comercio-123\",\n  \"items\": [\n    {\n      \"productoId\": \"{{sku}}\",\n      \"cantidad\": 2\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -123,33 +283,15 @@
       }
     },
     {
-      "name": "Catalogo a traves del gateway (200)",
+      "name": "Webhook repetido: no duplica (200)",
       "event": [
         {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": "{{baseUrl}}/api/productos"
-      }
-    },
-    {
-      "name": "Login a traves del gateway: credenciales malas (401)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"Responde 401\", () => pm.response.to.have.status(401));"
+              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"pm.response.json().id == pm.collectionVariables.get(\\\"ordenId\\\")\", () => pm.expect(pm.response.json().id == pm.collectionVariables.get(\"ordenId\")).to.be.true);"
             ]
           }
         }
@@ -160,12 +302,16 @@
           {
             "key": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "key": "X-Api-Key",
+            "value": "{{apiKey}}"
           }
         ],
-        "url": "{{baseUrl}}/api/auth/login",
+        "url": "{{baseUrl}}/api/v1/webhooks/ordenes",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"username\": \"nadie\",\n  \"password\": \"clave-equivocada\"\n}",
+          "raw": "{\n  \"externalOrderId\": \"{{externalOrderId}}\",\n  \"comercioId\": \"comercio-123\",\n  \"items\": [\n    {\n      \"productoId\": \"{{sku}}\",\n      \"cantidad\": 2\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -175,7 +321,32 @@
       }
     },
     {
-      "name": "Picking a traves del gateway (200)",
+      "name": "Comercio: solo ve sus ordenes aunque pida otro comercio (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"pm.response.json().every(o => o.comercioId === \\\"comercio-123\\\")\", () => pm.expect(pm.response.json().every(o => o.comercioId === \"comercio-123\")).to.be.true);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenComercio}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/ordenes?comercioId=comercio-ajeno"
+      }
+    },
+    {
+      "name": "Comercio: consulta el catalogo (200)",
       "event": [
         {
           "listen": "test",
@@ -189,8 +360,183 @@
       ],
       "request": {
         "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenComercio}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/productos"
+      }
+    },
+    {
+      "name": "Comercio: no puede crear productos (403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenComercio}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/productos",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sku\": \"X\",\n  \"nombre\": \"X\",\n  \"stockDisponible\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Comercio: no ve la cola de picking (403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenComercio}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/ordenes/disponibles-picking"
+      }
+    },
+    {
+      "name": "Operario: ordenes disponibles para picking (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"pm.response.json().some(o => o.id == pm.collectionVariables.get(\\\"ordenId\\\"))\", () => pm.expect(pm.response.json().some(o => o.id == pm.collectionVariables.get(\"ordenId\"))).to.be.true);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/ordenes/disponibles-picking"
+      }
+    },
+    {
+      "name": "Operario: lista los despachos (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/picking"
+      }
+    },
+    {
+      "name": "Salud del gateway (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"pm.response.json().status === \\\"UP\\\"\", () => pm.expect(pm.response.json().status === \"UP\").to.be.true);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/api/picking"
+        "url": "{{baseUrl}}/actuator/health"
+      }
+    },
+    {
+      "name": "Salud de ms-ordenes a traves del gateway (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"pm.response.json().status === \\\"UP\\\"\", () => pm.expect(pm.response.json().status === \"UP\").to.be.true);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/estado/ms-ordenes"
+      }
+    },
+    {
+      "name": "Salud de ms-inventario a traves del gateway (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"pm.response.json().status === \\\"UP\\\"\", () => pm.expect(pm.response.json().status === \"UP\").to.be.true);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/estado/ms-inventario"
       }
     }
   ],
@@ -204,7 +550,31 @@
       "value": "clave-local-solo-para-desarrollo"
     },
     {
+      "key": "operarioPassword",
+      "value": "Operario.2026"
+    },
+    {
+      "key": "comercioPassword",
+      "value": "Tienda1.2026"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tokenComercio",
+      "value": ""
+    },
+    {
+      "key": "sku",
+      "value": ""
+    },
+    {
       "key": "externalOrderId",
+      "value": ""
+    },
+    {
+      "key": "ordenId",
       "value": ""
     }
   ]
